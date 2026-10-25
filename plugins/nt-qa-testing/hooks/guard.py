@@ -9,7 +9,11 @@
    are refused.
 3. Inside the workspace: no git commit/push/pull; no reading secret files (.env*, *.jks,
    *.keystore, firebase-*.json, google-services.json, GoogleService-Info.plist) via Read,
-   Grep, Glob or Bash; nothing writes into the product repos ($NT_REPOS_DIR).
+   Grep, Glob or Bash; nothing writes into the product repos ($NT_REPOS_DIR). Single exception,
+   shared with nt-dev-coding and nt-documentation through hooks/devgate.py: a Write/Edit for the
+   active nt-dev-coding task the user approved, in a repo named in its plan, on a branch other than
+   master/main/production. Bash writes stay blocked; the approval markers (nt-docs/dev/ACTIVE,
+   dev/<id>/APPROVED) can never be written here.
 
 Reading the product repos is not blocked here (nt-documentation needs it); the skills forbid
 using code for test design. Standard library only, no subprocesses, fails closed.
@@ -23,6 +27,14 @@ import sys
 from urllib.parse import unquote
 
 sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import devgate  # noqa: E402  (identical copy of nt-dev-coding/hooks/devgate.py)
+except Exception as _e:  # fail closed: without the shared gate nothing may pass
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                             "permissionDecisionReason": f"nt-qa-testing guard: cannot load devgate.py "
+                                             f"({type(_e).__name__}: {_e}); refusing to be safe."}}))
+    sys.exit(0)
 
 WORKSPACE = os.path.realpath(os.path.expanduser(os.environ.get("NT_WORKSPACE", "~/atreya-ai")))
 REPOS = os.path.realpath(os.path.expanduser(os.environ.get("NT_REPOS_DIR", os.path.join(WORKSPACE, "repos"))))
@@ -187,9 +199,13 @@ def check_file(tool, inp, cwd):
         return
     if is_secret(path) and in_ws(path, cwd):
         deny(f"'{os.path.basename(path)}' is a secret file and must never be read or written.")
+    if tool != "Read" and devgate.is_marker(path, cwd):
+        deny(devgate.MARKER_MSG)
     if tool != "Read" and in_repos(path, cwd):
-        deny(f"{tool} of {path} is not allowed; the product repos are never modified. "
-             "QA output goes to ~/atreya-ai/nt-docs/qa/<run-id>/.")
+        ok, why = devgate.check_write(path, cwd)
+        if not ok:
+            deny(f"{tool} of {path} is not allowed; the product repos are never modified by nt-qa-testing"
+                 f"{' (' + why + ')' if why else ''}. QA output goes to ~/atreya-ai/nt-docs/qa/<run-id>/.")
 
 
 def check_grep(inp, cwd):
@@ -256,6 +272,8 @@ def check_git(toks, cwd):
 
 
 def check_bash(cmd, cwd):
+    if devgate.bash_writes_marker(cmd, cwd):
+        deny(devgate.MARKER_MSG)
     # 1. production hosts (everywhere), judged on the whole command: quoted scripts contain ; and |
     words = {os.path.basename(w) for w in re.findall(r"[A-Za-z0-9_./-]+", cmd)}
     if words & (NET_PROGS | INTERPRETERS):

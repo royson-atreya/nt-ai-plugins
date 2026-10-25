@@ -10,6 +10,10 @@ override with NT_WORKSPACE). Everything else passes untouched.
 2. Product repos are read-only: deny Write/Edit/NotebookEdit and modifying Bash commands in
    Atreya-origin repos and under $NT_REPOS_DIR. Not product repos: $NT_DOCS_DIR, and any repo
    with .claude-plugin/marketplace.json at its root (a plugin marketplace such as nt-ai-plugins).
+   Single exception, shared with nt-dev-coding and nt-qa-testing through hooks/devgate.py: a
+   Write/Edit under $NT_REPOS_DIR for the active nt-dev-coding task the user approved, in a repo
+   named in its plan, on a branch other than master/main/production. Bash writes stay blocked,
+   and the approval markers (nt-docs/dev/ACTIVE, dev/<id>/APPROVED) can never be written here.
 3. Searches inside product repos must be limited to code file types (several secret
    files are committed, so an unrestricted search could print them).
 4. git patch output (show/diff/log -p) inside product repos needs a code-file pathspec.
@@ -24,6 +28,14 @@ import re
 import shlex
 import sys
 sys.dont_write_bytecode = True
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+try:
+    import devgate  # noqa: E402  (identical copy of nt-dev-coding/hooks/devgate.py)
+except Exception as _e:  # fail closed: without the shared gate nothing may pass
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                             "permissionDecisionReason": f"nt-documentation guard: cannot load devgate.py "
+                                             f"({type(_e).__name__}: {_e}); refusing to be safe."}}))
+    sys.exit(0)
 
 WORKSPACE = os.path.realpath(os.path.expanduser(os.environ.get("NT_WORKSPACE", "~/atreya-ai")))
 REPOS = os.path.realpath(os.path.expanduser(os.environ.get("NT_REPOS_DIR", os.path.join(WORKSPACE, "repos"))))
@@ -171,8 +183,13 @@ def check_file_tool(tool, inp, cwd):
         return
     if is_secret(path) and in_scope(path, cwd):
         deny(f"'{os.path.basename(path)}' is a secret file in a Nadi Tarangini repo and must never be read or written.")
+    if tool != "Read" and devgate.is_marker(path, cwd):
+        deny(devgate.MARKER_MSG)
     if tool != "Read" and in_repos(path, cwd):
-        deny(f"{tool} of {path} is not allowed; the Nadi Tarangini product repos are read-only. Write output to {DOCS}.")
+        ok, why = devgate.check_write(path, cwd)
+        if not ok:
+            deny(f"{tool} of {path} is not allowed; the Nadi Tarangini product repos are read-only"
+                 f"{' (' + why + ')' if why else ''}. Write output to {DOCS}.")
     if tool != "Read" and path:
         p = resolve(path, cwd)
         if p.startswith(DOCS + os.sep):
@@ -241,6 +258,8 @@ PATTERN_FIRST = {"grep", "egrep", "fgrep", "awk", "sed", "jq"}
 
 
 def check_bash(cmd, cwd):
+    if devgate.bash_writes_marker(cmd, cwd):
+        deny(devgate.MARKER_MSG)
     segments = [s for s in SPLIT.split(cmd) if s.strip()]
     # a pipeline is judged as a whole: `find <repo> ... | xargs cat` must count as touching the repos
     whole = REPOS in cmd or any(in_repos(p, cwd) for s in segments for p in path_tokens(tokens(s)))

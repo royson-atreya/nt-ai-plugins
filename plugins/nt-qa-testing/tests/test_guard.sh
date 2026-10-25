@@ -206,6 +206,40 @@ row = list(csv.reader(open(f"{rd}/results.csv", encoding="utf-8-sig")))[1]
 check("csv: trailing sections ignored (module, steps)", (row[1], row[5]), ("patients", "1. Open list"))
 check("csv: bug id from run id", "bug repro (NT-BUG-7)" in row[11], True)
 
+# --- shared repo-write gate (hooks/devgate.py, approved nt-dev-coding task) ---
+import hashlib
+DEVD = f"{DOCS}/dev"
+def gitc(*a):
+    subprocess.run(["git", "-C", REPO, *a], check=True, capture_output=True)
+subprocess.run(["git", "init", "-q", "-b", "master", REPO], check=True, capture_output=True)
+gitc("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init")
+os.makedirs(f"{REPO}/app", exist_ok=True); open(f"{REPO}/app/x.php", "w").close()
+os.makedirs(f"{DEVD}/T-1", exist_ok=True)
+open(f"{DEVD}/T-1/plan.md", "w").write("---\nrepos: [Nadi-Tarangini-Frontend]\n---\n# plan\n")
+def approve():
+    sha = hashlib.sha256(open(f"{DEVD}/T-1/plan.md", "rb").read()).hexdigest()
+    json.dump({"id": "T-1", "repos": ["Nadi-Tarangini-Frontend"], "plan_sha256": sha}, open(f"{DEVD}/T-1/APPROVED", "w"))
+    open(f"{DEVD}/ACTIVE", "w").write("T-1\n")
+E = {"file_path": f"{REPO}/app/x.php", "old_string": "a", "new_string": "b"}
+guard("Edit", E, want="deny")                                    # no active task
+approve(); guard("Edit", E, want="deny")                         # approved, on master
+gitc("checkout", "-q", "-b", "feature/T-1"); guard("Edit", E)    # approved, feature branch
+guard("Write", {"file_path": f"{REPO}/app/New.php", "content": "x"})
+guard("Edit", dict(E, file_path=f"{REPO}/.git/config"), want="deny")
+guard("Bash", {"command": f"echo x > {REPO}/app/x.php"}, want="deny")   # Bash never writes into the repos
+for p in (f"{DEVD}/ACTIVE", f"{DEVD}/T-1/APPROVED"):
+    guard("Write", {"file_path": p, "content": "x"}, want="deny")
+guard("Bash", {"command": f"echo T-1 > {DEVD}/ACTIVE"}, want="deny")
+guard("Bash", {"command": f"cat {DEVD}/ACTIVE"})
+open(f"{DEVD}/T-1/plan.md", "a").write("changed\n"); guard("Edit", E, want="deny")   # plan changed
+approve(); guard("Edit", E)
+gitc("checkout", "-q", "master"); guard("Edit", E, want="deny")
+dc = os.path.join(os.path.dirname(ROOT), "nt-dev-coding", "hooks", "devgate.py")
+if os.path.exists(dc):
+    check("devgate.py identical to nt-dev-coding copy", open(dc).read() == open(f"{ROOT}/hooks/devgate.py").read(), True)
+for f in (f"{DEVD}/ACTIVE", f"{DEVD}/T-1/APPROVED"):
+    os.remove(f)
+
 # --- banner ---
 r = subprocess.run([sys.executable, f"{ROOT}/hooks/session_banner.py"], input=json.dumps({"cwd": DOCS}),
                    capture_output=True, text=True)

@@ -21,6 +21,11 @@
       "name": "nt-qa-testing",
       "source": "./plugins/nt-qa-testing",
       "description": "Spec-driven QA of one task or bug on Nadi Tarangini web staging: plan, cases, Playwright run with screenshots, evidence check, report and workbook CSV"
+    },
+    {
+      "name": "nt-dev-coding",
+      "source": "./plugins/nt-dev-coding",
+      "description": "Implement one approved Nadi Tarangini task or bug: ticket and plan from nt-docs, approval gate, surgical edits on your branch, diff, independent review and hand-off (no git writes)"
     }
   ]
 }

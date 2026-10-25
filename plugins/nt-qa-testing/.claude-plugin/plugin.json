@@ -1,6 +1,6 @@
 {
   "name": "nt-qa-testing",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Spec-driven QA for one Nadi Tarangini task or bug on web staging: scope plan, test cases from nt-docs specs, Playwright runs with per-step screenshots, independent evidence check, report and workbook CSV.",
   "author": {
     "name": "Atreya AI"

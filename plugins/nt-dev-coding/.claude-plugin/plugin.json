@@ -1,0 +1,9 @@
+{
+  "name": "nt-dev-coding",
+  "version": "0.1.0",
+  "description": "Implement one approved Nadi Tarangini task or bug: ticket and change plan from nt-docs specs, user approval, surgical edits on a feature branch, safe local checks, diff, independent review and hand-off. The user does all git actions.",
+  "author": {
+    "name": "Atreya AI"
+  },
+  "keywords": ["development", "code-review", "laravel", "flutter", "nadi-tarangini"]
+}

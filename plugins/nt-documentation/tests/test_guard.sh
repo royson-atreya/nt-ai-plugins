@@ -85,4 +85,38 @@ n=$((n+2))
 [ "$(echo '{"tool_name":"mcp__x_Zoho__ZohoSprints_CreateItem"}' | python3 hooks/zoho_confirm.py | jq -r .hookSpecificOutput.permissionDecision)" = ask ] || { fail=1; echo "FAIL zoho write should ask"; }
 [ -z "$(echo '{"tool_name":"mcp__x_Zoho__ZohoSprints_GetItems"}' | python3 hooks/zoho_confirm.py)" ] || { fail=1; echo "FAIL zoho read should pass"; }
 
+# ---------- shared repo-write gate (hooks/devgate.py, approved nt-dev-coding task) ----------
+GW="$FX/gws"; GR="$GW/repos"; GB="$GR/Ashoka-World-Backend"; GF="$GR/Nadi-Tarangini-Frontend"; GD="$GW/nt-docs/dev"
+for r in "$GB" "$GF"; do git init -q -b master "$r"; mkdir -p "$r/app"; : > "$r/app/x.php"
+  git -C "$r" -c user.email=t@t -c user.name=t commit -q --allow-empty -m init; done
+mkdir -p "$GD/T-1"; printf -- '---\nrepos: [Ashoka-World-Backend]\n---\n# plan\n' > "$GD/T-1/plan.md"
+approve(){ python3 - "$GD" "$1" <<'PY'
+import hashlib, json, sys
+dev, tid = sys.argv[1], sys.argv[2]
+sha = hashlib.sha256(open(f"{dev}/{tid}/plan.md", "rb").read()).hexdigest()
+json.dump({"id": tid, "repos": ["Ashoka-World-Backend"], "plan_sha256": sha}, open(f"{dev}/{tid}/APPROVED", "w"))
+open(f"{dev}/ACTIVE", "w").write(tid + "\n")
+PY
+}
+gt(){ n=$((n+1)); out=$(jq -nc --arg t "$2" --argjson i "$3" --arg c "${4:-$GW}" '{tool_name:$t,tool_input:$i,cwd:$c}' \
+  | NT_WORKSPACE="$GW" NT_REPOS_DIR="$GR" NT_DOCS_DIR="$GW/nt-docs" python3 hooks/guard.py)
+  got=$([ -n "$out" ] && echo deny || echo allow)
+  if [ "$got" != "$1" ]; then fail=1; echo "FAIL gate expected $1: $2 $3"; echo "   $out"; fi; }
+ge(){ gt "$1" Edit "$(jq -nc --arg p "$2" '{file_path:$p,old_string:"a",new_string:"b"}')"; }
+gb(){ gt "$1" Bash "$(jq -nc --arg c "$2" '{command:$c}')" "${3:-$GW}"; }
+ge deny "$GB/app/x.php"                                  # no active task
+approve T-1; ge deny "$GB/app/x.php"                     # approved, but on master
+git -C "$GB" checkout -q -b feature/T-1; ge allow "$GB/app/x.php"
+gt allow Write "$(jq -nc --arg p "$GB/app/New.php" '{file_path:$p,content:"x"}')"
+git -C "$GF" checkout -q -b feature/T-1; ge deny "$GF/app/x.php"   # repo not in the plan
+ge deny "$GB/.git/config"
+gb deny "echo x > $GB/app/x.php"; gb deny "rm $GB/app/x.php"        # Bash never writes into the repos
+for p in "$GD/ACTIVE" "$GD/T-1/APPROVED"; do gt deny Write "$(jq -nc --arg p "$p" '{file_path:$p,content:"x"}')"; done
+gb deny "echo T-1 > $GD/ACTIVE"; gb deny "cp /tmp/a $GD/T-1/APPROVED"; gb allow "cat $GD/ACTIVE"
+echo "changed" >> "$GD/T-1/plan.md"; ge deny "$GB/app/x.php"       # plan changed after approval
+approve T-1; ge allow "$GB/app/x.php"
+git -C "$GB" checkout -q master; ge deny "$GB/app/x.php"
+n=$((n+1)); if [ -f ../nt-dev-coding/hooks/devgate.py ] && ! cmp -s hooks/devgate.py ../nt-dev-coding/hooks/devgate.py; then
+  fail=1; echo "FAIL hooks/devgate.py differs from nt-dev-coding/hooks/devgate.py (copy it over)"; fi
+
 [ "$fail" = 0 ] && echo "all $n guard tests passed"; exit $fail
