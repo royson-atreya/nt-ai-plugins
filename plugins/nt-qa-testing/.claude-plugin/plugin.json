@@ -1,0 +1,65 @@
+{
+  "name": "nt-qa-testing",
+  "version": "0.1.0",
+  "description": "Spec-driven QA for one Nadi Tarangini task or bug on web staging: scope plan, test cases from nt-docs specs, Playwright runs with per-step screenshots, independent evidence check, report and workbook CSV.",
+  "author": {
+    "name": "Atreya AI"
+  },
+  "keywords": ["qa", "testing", "playwright", "staging", "nadi-tarangini"],
+  "userConfig": {
+    "staging_base_url": {
+      "type": "string",
+      "title": "Staging base URL",
+      "description": "Nadi Tarangini web staging URL. Only staging hosts are allowed.",
+      "default": "https://staging-dashboard.naditarangini.com"
+    },
+    "doctor_username": {
+      "type": "string",
+      "title": "Doctor test login: username",
+      "description": "Staging doctor test account. Kept in secure storage; leave empty if you have none.",
+      "sensitive": true
+    },
+    "doctor_password": {
+      "type": "string",
+      "title": "Doctor test login: password",
+      "description": "Kept in secure storage; injected into the browser by a hook, never shown to Claude.",
+      "sensitive": true
+    },
+    "admin_username": {
+      "type": "string",
+      "title": "Admin test login: username",
+      "description": "Staging admin test account. Kept in secure storage; leave empty if you have none.",
+      "sensitive": true
+    },
+    "admin_password": {
+      "type": "string",
+      "title": "Admin test login: password",
+      "description": "Kept in secure storage; injected into the browser by a hook, never shown to Claude.",
+      "sensitive": true
+    },
+    "patient_username": {
+      "type": "string",
+      "title": "Patient test login: username",
+      "description": "Staging patient test account. Kept in secure storage; leave empty if you have none.",
+      "sensitive": true
+    },
+    "patient_password": {
+      "type": "string",
+      "title": "Patient test login: password",
+      "description": "Kept in secure storage; injected into the browser by a hook, never shown to Claude.",
+      "sensitive": true
+    },
+    "college_username": {
+      "type": "string",
+      "title": "College test login: username",
+      "description": "Staging college test account. Kept in secure storage; leave empty if you have none.",
+      "sensitive": true
+    },
+    "college_password": {
+      "type": "string",
+      "title": "College test login: password",
+      "description": "Kept in secure storage; injected into the browser by a hook, never shown to Claude.",
+      "sensitive": true
+    }
+  }
+}

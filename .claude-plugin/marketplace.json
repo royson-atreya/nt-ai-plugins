@@ -16,6 +16,11 @@
       "name": "nt-documentation",
       "source": "./plugins/nt-documentation",
       "description": "Read-only understanding of the Nadi Tarangini codebases: module maps, functional specs, API links, draw.io diagrams, impact analysis"
+    },
+    {
+      "name": "nt-qa-testing",
+      "source": "./plugins/nt-qa-testing",
+      "description": "Spec-driven QA of one task or bug on Nadi Tarangini web staging: plan, cases, Playwright run with screenshots, evidence check, report and workbook CSV"
     }
   ]
 }
