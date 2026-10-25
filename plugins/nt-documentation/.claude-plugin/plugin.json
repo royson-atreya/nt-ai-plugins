@@ -1,0 +1,9 @@
+{
+  "name": "nt-documentation",
+  "version": "0.1.0",
+  "description": "Read-only understanding of the Nadi Tarangini codebases: module maps, per-module functional specs, cross-repo API links, draw.io diagrams and change-impact analysis.",
+  "author": {
+    "name": "Atreya AI"
+  },
+  "keywords": ["documentation", "drawio", "impact-analysis", "laravel", "flutter", "nadi-tarangini"]
+}
