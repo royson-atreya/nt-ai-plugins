@@ -1,6 +1,6 @@
 # nt-documentation
 
-A read-only plugin that explains the Nadi Tarangini (NT) codebases. It produces module maps, per-module functional specs, cross-repo API links, draw.io diagrams and change-impact analysis, and can turn an approved change into Zoho Sprints tasks. It is the first plugin in the `nt-ai-plugins` marketplace. `nt-qa-testing` and `nt-dev-coding` will use its output as verified context.
+A read-only plugin that explains the Nadi Tarangini (NT) codebases. It produces module maps, per-module functional specs, cross-repo API links, draw.io diagrams and change-impact analysis, and can turn an approved change into Zoho Sprints tasks. It is the first step in the `nt-ai-plugins` workflow: `nt-dev-coding` builds its change plans and `nt-qa-testing` builds its test cases from the specs it writes to `~/atreya-ai/nt-docs`, and both stop and point back here when no spec covers the area.
 
 **It never writes product code, tests or UI, never modifies the product repos, and never handles patient data or secrets.**
 

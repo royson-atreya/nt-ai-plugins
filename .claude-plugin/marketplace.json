@@ -8,11 +8,6 @@
   },
   "plugins": [
     {
-      "name": "drawio",
-      "source": "./plugins/drawio",
-      "description": "draw.io MCP server for creating and editing diagrams"
-    },
-    {
       "name": "nt-documentation",
       "source": "./plugins/nt-documentation",
       "description": "Read-only understanding of the Nadi Tarangini codebases: module maps, functional specs, API links, draw.io diagrams, impact analysis"
